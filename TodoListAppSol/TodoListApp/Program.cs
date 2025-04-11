@@ -1,9 +1,36 @@
+using TodoListApp.Core.Entities; 
 using TodoListApp.Core.Interfaces;
 using TodoListApp.Core.Services;
 
 // Basic Dependency Injection Setup (manual)
 ITodoListRepository repository = new InMemoryTodoListRepository();
 ITodoList todoListService = new TodoListService(repository);
+
+// --- Add Dummy Data to test easily--- 
+Console.WriteLine("Adding dummy data...");
+
+int id1 = repository.GetNextId();
+todoListService.AddItem(id1, "Learn C#", "Complete online tutorial", "Personal");
+
+int id2 = repository.GetNextId();
+todoListService.AddItem(id2, "Prepare Presentation", "Create slides for meeting", "Work");
+todoListService.RegisterProgression(id2, DateTime.Now.AddDays(-2), 30);
+
+int id3 = repository.GetNextId();
+todoListService.AddItem(id3, "Read Book", "Finish novel chapter", "Personal");
+todoListService.RegisterProgression(id3, DateTime.Now.AddDays(-5), 50);
+todoListService.RegisterProgression(id3, DateTime.Now.AddDays(-1), 25);
+
+int id4 = repository.GetNextId();
+todoListService.AddItem(id4, "Plan Project", "Outline main tasks", "Work");
+
+int id5 = repository.GetNextId();
+todoListService.AddItem(id5, "Exercise", "Morning run", "Personal");
+todoListService.RegisterProgression(id5, DateTime.Now.AddDays(-3), 60);
+todoListService.RegisterProgression(id5, DateTime.Now.AddDays(-1), 40);
+
+Console.WriteLine("Dummy data added.");
+// --- End Dummy Data ---
 
 Console.WriteLine("--- TodoList Console App ---");
 Console.WriteLine("Enter commands (e.g., 'add', 'update', 'remove', 'progress', 'print', 'exit'):");
@@ -73,7 +100,7 @@ static void ParseAndExecuteCommand(string commandLine, ITodoList service, ITodoL
                 break;
 
             case "progress":
-                if (args.Length < 3 || !int.TryParse(args[0], out int progressId) || !decimal.TryParse(args[1], out decimal percent))
+                if (args.Length < 2 || !int.TryParse(args[0], out int progressId) || !decimal.TryParse(args[1], out decimal percent))
                 {
                     Console.WriteLine("Usage: progress <id> <percent> [yyyy-MM-dd HH:mm]"); // Date is optional
                     return;
