@@ -1,12 +1,14 @@
-using System.Text;
 using TodoListApp.Core.Entities;
 using TodoListApp.Core.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace TodoListApp.Core.Services;
 
 public class TodoListService : ITodoList
 {
-    private readonly List<TodoItem> _todoItems = new List<TodoItem>();
+    private readonly List<TodoItem> _items = new List<TodoItem>();
     private readonly ITodoListRepository _repository;
 
     public TodoListService(ITodoListRepository repository)
@@ -16,16 +18,15 @@ public class TodoListService : ITodoList
 
     public void AddItem(int id, string title, string description, string category)
     {
-        var validCategories = _repository.GetAllCategories();
-        if (!validCategories.Contains(category, StringComparer.OrdinalIgnoreCase))
+        if (!_repository.GetAllCategories().Contains(category, StringComparer.OrdinalIgnoreCase))
         {
             Console.WriteLine($"Error: Category '{category}' is not valid.");
             return;
         }
 
-        if (_todoItems.Any(item => item.Id == id))
+        if (_items.Any(item => item.Id == id))
         {
-            Console.WriteLine($"Error: TodoItem with ID {id} already exists.");
+            Console.WriteLine($"Error: TodoItem with Id {id} already exists.");
             return;
         }
 
@@ -36,99 +37,127 @@ public class TodoListService : ITodoList
             Description = description,
             Category = category
         };
-        _todoItems.Add(newItem);
+
+        _items.Add(newItem);
+        Console.WriteLine($"TodoItem {id} added successfully.");
     }
 
     public void UpdateItem(int id, string description)
     {
-        var item = FindItemById(id);
-        if (item == null) return;
+        var itemToUpdate = _items.FirstOrDefault(item => item.Id == id);
 
-        if (item.Progressions.Sum(p => p.Percent) > 50)
+        if (itemToUpdate == null)
         {
-            Console.WriteLine($"Error: Cannot update TodoItem {id} because completion is over 50%.");
+            Console.WriteLine($"Error: TodoItem with Id {id} not found.");
             return;
         }
 
-        item.Description = description;
+        if (itemToUpdate.Progressions.Sum(p => p.Percent) > 50)
+        {
+            Console.WriteLine($"Error: Cannot update TodoItem {id} because its progress is over 50%.");
+            return;
+        }
+
+        itemToUpdate.Description = description;
+        Console.WriteLine($"TodoItem {id} updated successfully.");
     }
 
     public void RemoveItem(int id)
     {
-        var item = FindItemById(id);
-        if (item == null) return;
+        var itemToRemove = _items.FirstOrDefault(item => item.Id == id);
 
-        if (item.Progressions.Sum(p => p.Percent) > 50)
+        if (itemToRemove == null)
         {
-            Console.WriteLine($"Error: Cannot remove TodoItem {id} because completion is over 50%.");
+            Console.WriteLine($"Error: TodoItem with Id {id} not found.");
             return;
         }
 
-        _todoItems.Remove(item);
+        if (itemToRemove.IsCompleted)
+        {
+            Console.WriteLine($"Error: Cannot remove TodoItem {id} because it is completed.");
+            return;
+        }
+
+        _items.Remove(itemToRemove);
+        Console.WriteLine($"TodoItem {id} removed successfully.");
     }
 
     public void RegisterProgression(int id, DateTime dateTime, decimal percent)
     {
-        var item = FindItemById(id);
-        if (item == null) return;
+        var itemToUpdate = _items.FirstOrDefault(item => item.Id == id);
 
-        if (percent <= 0 || percent >= 100)
+        if (itemToUpdate == null)
         {
-            Console.WriteLine("Error: Progression percentage must be between 0 and 100.");
+            Console.WriteLine($"Error: TodoItem with Id {id} not found.");
             return;
         }
 
-        var currentTotalPercent = item.Progressions.Sum(p => p.Percent);
+        if (itemToUpdate.IsCompleted)
+        {
+            Console.WriteLine($"Error: Cannot register progression for TodoItem {id} because it is already completed.");
+            return;
+        }
+
+        if (percent < 0 || percent > 100)
+        {
+            Console.WriteLine($"Error: Percentage must be between 0 and 100.");
+            return;
+        }
+
+        var currentTotalPercent = itemToUpdate.Progressions.Sum(p => p.Percent);
         if (currentTotalPercent + percent > 100)
         {
-            Console.WriteLine("Error: Adding this progression would exceed 100% completion.");
+            Console.WriteLine($"Error: Total percentage cannot exceed 100. Current: {currentTotalPercent}%, Attempted Add: {percent}%.");
             return;
         }
 
-        var lastProgressionDate = item.Progressions.Any() ? item.Progressions.Max(p => p.Date) : DateTime.MinValue;
-        if (dateTime <= lastProgressionDate)
+        var lastProgressionDate = itemToUpdate.Progressions.Any() ? itemToUpdate.Progressions.Max(p => p.Date) : DateTime.MinValue;
+        if (dateTime < lastProgressionDate)
         {
-            Console.WriteLine("Error: Progression date must be later than the last progression date.");
+            Console.WriteLine($"Error: Progression date cannot be earlier than the last registered progression date ({lastProgressionDate:yyyy-MM-dd HH:mm}).");
             return;
         }
 
-        item.Progressions.Add(new Progression { Date = dateTime, Percent = percent });
+        var newProgression = new Progression { Date = dateTime, Percent = percent };
+        itemToUpdate.Progressions.Add(newProgression);
+
+        Console.WriteLine($"Progression registered for TodoItem {id}.");
     }
 
     public void PrintItems()
     {
-        var sortedItems = _todoItems.OrderBy(item => item.Id);
-
-        foreach (var item in sortedItems)
+        if (!_items.Any())
         {
-            Console.WriteLine($"{item.Id}) {item.Title} - {item.Description} ({item.Category}) Completed:{item.IsCompleted}");
-
-            decimal accumulatedPercent = 0;
-            foreach (var progression in item.Progressions.OrderBy(p => p.Date))
-            {
-                accumulatedPercent += progression.Percent;
-                var progressBar = GenerateProgressBar(accumulatedPercent);
-                Console.WriteLine($"   {progression.Date} - {accumulatedPercent}% |{progressBar}|");
-            }
+            Console.WriteLine("No TodoItems to display.");
+            return;
         }
-    }
 
-    private TodoItem? FindItemById(int id)
-    {
-        var item = _todoItems.FirstOrDefault(i => i.Id == id);
-        if (item == null)
+        Console.WriteLine("\n--- Todo List ---");
+        foreach (var item in _items.OrderBy(i => i.Id))
         {
-            Console.WriteLine($"Error: TodoItem with ID {id} not found.");
+            Console.WriteLine($"Id: {item.Id}");
+            Console.WriteLine($"Title: {item.Title}");
+            Console.WriteLine($"Description: {item.Description}");
+            Console.WriteLine($"Category: {item.Category}");
+
+            decimal totalPercent = item.Progressions.Sum(p => p.Percent);
+            string progressBar = GenerateProgressBar(totalPercent);
+            Console.WriteLine($"Progress: [{progressBar}] {totalPercent}%");
+
+            Console.WriteLine($"Status: {(item.IsCompleted ? "Completed" : "Pending")}");
+            Console.WriteLine("--------------------");
         }
-        return item;
     }
 
     private string GenerateProgressBar(decimal percentage)
     {
-        const int totalWidth = 50; 
-        int filledWidth = (int)Math.Round((percentage / 100m) * totalWidth);
-        int emptyWidth = totalWidth - filledWidth;
+        const int barLength = 20;
+        int filledLength = (int)Math.Round((percentage / 100m) * barLength);
+        int emptyLength = barLength - filledLength;
 
-        return new string('O', filledWidth) + new string(' ', emptyWidth);
+        filledLength = Math.Min(filledLength, barLength);
+        emptyLength = Math.Max(0, barLength - filledLength);
+
+        return new string('#', filledLength) + new string('-', emptyLength);
     }
 }

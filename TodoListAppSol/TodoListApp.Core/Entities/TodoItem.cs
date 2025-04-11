@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 
 namespace TodoListApp.Core.Entities;
@@ -11,13 +12,4 @@ public class TodoItem
     public List<Progression> Progressions { get; private set; } = new List<Progression>();
 
     public bool IsCompleted => Progressions.Sum(p => p.Percent) >= 100;
-
- 
-    // public TodoItem(int id, string title, string description, string category)
-    // {
-    //     Id = id;
-    //     Title = title;
-    //     Description = description;
-    //     Category = category;
-    // }
 }
