@@ -10,9 +10,9 @@ namespace TodoListApp.Api.Modules;
 
 public record CreateTodoRequest(string Title, string Description, string Category);
 
-
 public record UpdateTodoDescriptionRequest(string Description);
 
+public record UpdateTodoRequest(string Title, string Description, string Category);
 
 public record AddProgressRequest(DateTime DateTime, decimal Percent);
 
@@ -28,11 +28,13 @@ public class TodoModule : ICarterModule
 
         group.MapPost("/", CreateTodo);
     
-        group.MapPut("/{id:int}", UpdateTodoDescription);
+        group.MapPut("/{id:int}", UpdateTodo);
 
         group.MapDelete("/{id:int}", DeleteTodo);
 
         group.MapPost("/{id:int}/progress", AddTodoProgress);
+
+        group.MapGet("/categories", GetAllCategories);
     }
 
  
@@ -66,9 +68,9 @@ public class TodoModule : ICarterModule
         return Results.Created($"/todos/{newItem.Id}", newItem);
     }
 
-    private static IResult UpdateTodoDescription(int id, UpdateTodoDescriptionRequest request, ITodoList todoListService)
+    private static IResult UpdateTodo(int id, UpdateTodoRequest request, ITodoList todoListService)
     {
-        var result = todoListService.UpdateItem(id, request.Description);
+        var result = todoListService.UpdateItem(id, request.Title, request.Description, request.Category);
 
         if (!result.IsSuccess)
         {
@@ -114,5 +116,11 @@ public class TodoModule : ICarterModule
         }
 
         return Results.NoContent();
+    }
+
+    private static IResult GetAllCategories(ITodoListRepository repository)
+    {
+        var categories = repository.GetAllCategories();
+        return Results.Ok(categories);
     }
 }

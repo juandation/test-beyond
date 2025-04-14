@@ -8,7 +8,7 @@ namespace TodoListApp.Core.Interfaces;
 public interface ITodoList
 {
     ServiceResult<TodoItem> AddItem(int id, string title, string description, string category);
-    ServiceResult UpdateItem(int id, string description);
+    ServiceResult UpdateItem(int id, string title, string description, string category);
     ServiceResult RemoveItem(int id);
     ServiceResult RegisterProgression(int id, DateTime dateTime, decimal percent);
     IEnumerable<TodoItem> GetAllItems();

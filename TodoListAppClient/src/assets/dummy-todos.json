@@ -1,0 +1,56 @@
+[
+  {
+    "id": 1,
+    "title": "Learn Angular",
+    "description": "Complete the Angular tutorial.",
+    "category": "Learning",
+    "progress": 50,
+    "isCompleted": false,
+    "progressions": [
+      { "dateTime": "2025-04-13T10:00:00Z", "percent": 30 },
+      { "dateTime": "2025-04-14T14:00:00Z", "percent": 20 }
+    ]
+  },
+  {
+    "id": 2,
+    "title": "Grocery Shopping",
+    "description": "Buy milk, eggs, and bread.",
+    "category": "Home",
+    "progress": 0,
+    "isCompleted": false,
+    "progressions": []
+  },
+  {
+    "id": 3,
+    "title": "Write Report",
+    "description": "Finish the Q1 sales report.",
+    "category": "Work",
+    "progress": 100,
+    "isCompleted": true,
+    "progressions": [
+      { "dateTime": "2025-04-10T09:00:00Z", "percent": 100 }
+    ]
+  },
+  {
+    "id": 4,
+    "title": "Gym Workout",
+    "description": "Leg day.",
+    "category": "Health",
+    "progress": 75,
+    "isCompleted": false,
+    "progressions": [
+      { "dateTime": "2025-04-14T08:00:00Z", "percent": 75 }
+    ]
+  },
+  {
+    "id": 5,
+    "title": "Plan Vacation",
+    "description": "Research destinations and book flights.",
+    "category": "Personal",
+    "progress": 10,
+    "isCompleted": false,
+    "progressions": [
+       { "dateTime": "2025-04-14T16:30:00Z", "percent": 10 }
+    ]
+  }
+]
