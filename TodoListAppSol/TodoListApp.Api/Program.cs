@@ -1,6 +1,9 @@
 using Carter;
 using TodoListApp.Core.Interfaces;
 using TodoListApp.Core.Services;
+using Microsoft.Extensions.DependencyInjection; 
+using Microsoft.AspNetCore.Builder; 
+using Microsoft.AspNetCore.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
