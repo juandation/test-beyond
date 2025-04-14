@@ -14,9 +14,9 @@ builder.Services.AddSwaggerGen();
 // Register Carter
 builder.Services.AddCarter();
 
-// Register Core Services (using Singleton for in-memory repository)
+// Register Core Services (using Singleton for in-memory repository and service)
 builder.Services.AddSingleton<ITodoListRepository, InMemoryTodoListRepository>();
-builder.Services.AddScoped<ITodoList, TodoListService>();
+builder.Services.AddSingleton<ITodoList, TodoListService>();
 
 var app = builder.Build();
 

@@ -1,0 +1,248 @@
+{
+	"info": {
+		"_postman_id": "f1b2c3d4-e5f6-7890-1234-abcdef123456",
+		"name": "Todo List API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"description": "Collection for testing the Todo List API endpoints."
+	},
+	"item": [
+		{
+			"name": "Create Todo Item",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201 Created\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"pm.test(\"Response has ID\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.id).to.be.a('number');",
+							"    pm.collectionVariables.set(\"createdItemId\", jsonData.id);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"title\": \"Postman Test Item\",\n    \"description\": \"Created via Postman Collection\",\n    \"category\": \"Work\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/todos",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"todos"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Created Item",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test(\"Response ID matches created ID\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.id).to.eql(parseInt(pm.collectionVariables.get(\"createdItemId\")));",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/todos/{{createdItemId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"todos",
+						"{{createdItemId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Add Progress to Created Item",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 204 No Content\", function () {",
+							"    pm.response.to.have.status(204);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"dateTime\": \"{{$isoTimestamp}}\", \"percent\": 25\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/todos/{{createdItemId}}/progress",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"todos",
+						"{{createdItemId}}",
+						"progress"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Created Item Description",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 204 No Content\", function () {",
+							"    pm.response.to.have.status(204);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"description\": \"Updated via Postman Collection\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/todos/{{createdItemId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"todos",
+						"{{createdItemId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Todo Items",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test(\"Response is an array\", function () {",
+							"    pm.response.to.be.json;",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.be.an('array');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/todos",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"todos"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Created Item",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 204 No Content\", function () {",
+							"    pm.response.to.have.status(204);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/todos/{{createdItemId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"todos",
+						"{{createdItemId}}"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5056",
+			"type": "string"
+		},
+		{
+			"key": "createdItemId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
