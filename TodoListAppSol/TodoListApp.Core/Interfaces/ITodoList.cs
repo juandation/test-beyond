@@ -1,12 +1,17 @@
+using TodoListApp.Core.Entities;
+using TodoListApp.Core.Results;
 using System;
+using System.Collections.Generic;
 
 namespace TodoListApp.Core.Interfaces;
 
 public interface ITodoList
 {
-    void AddItem(int id, string title, string description, string category);
-    void UpdateItem(int id, string description);
-    void RemoveItem(int id);
-    void RegisterProgression(int id, DateTime dateTime, decimal percent);
-    void PrintItems();
+    ServiceResult<TodoItem> AddItem(int id, string title, string description, string category);
+    ServiceResult UpdateItem(int id, string description);
+    ServiceResult RemoveItem(int id);
+    ServiceResult RegisterProgression(int id, DateTime dateTime, decimal percent);
+    IEnumerable<TodoItem> GetAllItems();
+    ServiceResult<TodoItem> GetItemById(int id);
+    void PrintItems(); // Keep for console app compatibility
 }

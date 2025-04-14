@@ -1,5 +1,6 @@
 using TodoListApp.Core.Entities;
 using TodoListApp.Core.Interfaces;
+using TodoListApp.Core.Results;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +9,7 @@ namespace TodoListApp.Core.Services;
 
 public class TodoListService : ITodoList
 {
-    private readonly List<TodoItem> _items = new List<TodoItem>();
+    private readonly List<TodoItem> _items = new();
     private readonly ITodoListRepository _repository;
 
     public TodoListService(ITodoListRepository repository)
@@ -16,18 +17,17 @@ public class TodoListService : ITodoList
         _repository = repository;
     }
 
-    public void AddItem(int id, string title, string description, string category)
+    public ServiceResult<TodoItem> AddItem(int id, string title, string description, string category)
     {
-        if (!_repository.GetAllCategories().Contains(category, StringComparer.OrdinalIgnoreCase))
-        {
-            Console.WriteLine($"Error: Category '{category}' is not valid.");
-            return;
-        }
-
         if (_items.Any(item => item.Id == id))
         {
-            Console.WriteLine($"Error: TodoItem with Id {id} already exists.");
-            return;
+            return ServiceResult<TodoItem>.Failure($"TodoItem with Id {id} already exists.");
+        }
+
+        var validCategories = _repository.GetAllCategories();
+        if (!validCategories.Contains(category, StringComparer.OrdinalIgnoreCase))
+        {
+            return ServiceResult<TodoItem>.Failure($"Category '{category}' is not valid. Valid categories are: {string.Join(", ", validCategories)}.");
         }
 
         var newItem = new TodoItem
@@ -36,128 +36,132 @@ public class TodoListService : ITodoList
             Title = title,
             Description = description,
             Category = category
+            // CreatedAt = DateTime.Now // Removed - Property doesn't exist
         };
 
         _items.Add(newItem);
-        Console.WriteLine($"TodoItem {id} added successfully.");
+        return ServiceResult<TodoItem>.Success(newItem);
     }
 
-    public void UpdateItem(int id, string description)
+    public ServiceResult UpdateItem(int id, string description)
     {
-        var itemToUpdate = _items.FirstOrDefault(item => item.Id == id);
-
-        if (itemToUpdate == null)
+        var item = _items.FirstOrDefault(i => i.Id == id);
+        if (item == null)
         {
-            Console.WriteLine($"Error: TodoItem with Id {id} not found.");
-            return;
+            return ServiceResult.Failure($"TodoItem with Id {id} not found.");
         }
 
-        if (itemToUpdate.Progressions.Sum(p => p.Percent) > 50)
+        // Use Sum() instead of CalculateTotalProgress()
+        if (item.Progressions.Sum(p => p.Percent) > 50)
         {
-            Console.WriteLine($"Error: Cannot update TodoItem {id} because its progress is over 50%.");
-            return;
+            return ServiceResult.Failure($"Cannot update TodoItem {id} because its progress is over 50%.");
         }
 
-        itemToUpdate.Description = description;
-        Console.WriteLine($"TodoItem {id} updated successfully.");
+        item.Description = description;
+        return ServiceResult.Success();
     }
 
-    public void RemoveItem(int id)
+    public ServiceResult RemoveItem(int id)
     {
-        var itemToRemove = _items.FirstOrDefault(item => item.Id == id);
-
-        if (itemToRemove == null)
+        var item = _items.FirstOrDefault(i => i.Id == id);
+        if (item == null)
         {
-            Console.WriteLine($"Error: TodoItem with Id {id} not found.");
-            return;
+            return ServiceResult.Failure($"TodoItem with Id {id} not found.");
         }
 
-        if (itemToRemove.IsCompleted)
+        // IsCompleted is calculated, no change needed here
+        if (item.IsCompleted)
         {
-            Console.WriteLine($"Error: Cannot remove TodoItem {id} because it is completed.");
-            return;
+            return ServiceResult.Failure($"Cannot remove TodoItem {id} because it is completed.");
         }
 
-        _items.Remove(itemToRemove);
-        Console.WriteLine($"TodoItem {id} removed successfully.");
+        _items.Remove(item);
+        return ServiceResult.Success();
     }
 
-    public void RegisterProgression(int id, DateTime dateTime, decimal percent)
+    public ServiceResult RegisterProgression(int id, DateTime dateTime, decimal percent)
     {
-        var itemToUpdate = _items.FirstOrDefault(item => item.Id == id);
-
-        if (itemToUpdate == null)
+        var item = _items.FirstOrDefault(i => i.Id == id);
+        if (item == null)
         {
-            Console.WriteLine($"Error: TodoItem with Id {id} not found.");
-            return;
+            return ServiceResult.Failure($"TodoItem with Id {id} not found.");
         }
 
-        if (itemToUpdate.IsCompleted)
+        // IsCompleted is calculated, no change needed here
+        if (item.IsCompleted)
         {
-            Console.WriteLine($"Error: Cannot register progression for TodoItem {id} because it is already completed.");
-            return;
+             return ServiceResult.Failure($"Cannot register progression for TodoItem {id} because it is already completed.");
         }
 
         if (percent < 0 || percent > 100)
         {
-            Console.WriteLine($"Error: Percentage must be between 0 and 100.");
-            return;
+            return ServiceResult.Failure("Percentage must be between 0 and 100.");
         }
 
-        var currentTotalPercent = itemToUpdate.Progressions.Sum(p => p.Percent);
-        if (currentTotalPercent + percent > 100)
+        // Use Sum() instead of CalculateTotalProgress()
+        if (item.Progressions.Sum(p => p.Percent) + percent > 100)
         {
-            Console.WriteLine($"Error: Total percentage cannot exceed 100. Current: {currentTotalPercent}%, Attempted Add: {percent}%.");
-            return;
+            return ServiceResult.Failure("Total percentage cannot exceed 100.");
         }
 
-        var lastProgressionDate = itemToUpdate.Progressions.Any() ? itemToUpdate.Progressions.Max(p => p.Date) : DateTime.MinValue;
-        if (dateTime < lastProgressionDate)
+        // Use Date instead of DateTime
+        if (item.Progressions.Any() && dateTime < item.Progressions.Max(p => p.Date))
         {
-            Console.WriteLine($"Error: Progression date cannot be earlier than the last registered progression date ({lastProgressionDate:yyyy-MM-dd HH:mm}).");
-            return;
+            return ServiceResult.Failure("Progression date cannot be earlier than the last registered progression date.");
         }
 
-        var newProgression = new Progression { Date = dateTime, Percent = percent };
-        itemToUpdate.Progressions.Add(newProgression);
+        // Use Date instead of DateTime
+        item.Progressions.Add(new Progression { Date = dateTime, Percent = percent });
+        // item.IsCompleted = item.Progressions.Sum(p => p.Percent) >= 100; // Removed - IsCompleted is calculated
 
-        Console.WriteLine($"Progression registered for TodoItem {id}.");
+        return ServiceResult.Success();
+    }
+
+    public IEnumerable<TodoItem> GetAllItems()
+    {
+        return _items.OrderBy(i => i.Id).ToList(); // Return a copy sorted by ID
+    }
+
+    public ServiceResult<TodoItem> GetItemById(int id)
+    {
+        var item = _items.FirstOrDefault(i => i.Id == id);
+        if (item == null)
+        {
+            return ServiceResult<TodoItem>.Failure($"TodoItem with Id {id} not found.");
+        }
+        return ServiceResult<TodoItem>.Success(item);
     }
 
     public void PrintItems()
     {
         if (!_items.Any())
         {
-            Console.WriteLine("No TodoItems to display.");
+            Console.WriteLine("No TodoItems found.");
             return;
         }
 
         Console.WriteLine("\n--- Todo List ---");
         foreach (var item in _items.OrderBy(i => i.Id))
         {
-            Console.WriteLine($"Id: {item.Id}");
-            Console.WriteLine($"Title: {item.Title}");
-            Console.WriteLine($"Description: {item.Description}");
-            Console.WriteLine($"Category: {item.Category}");
-
-            decimal totalPercent = item.Progressions.Sum(p => p.Percent);
-            string progressBar = GenerateProgressBar(totalPercent);
-            Console.WriteLine($"Progress: [{progressBar}] {totalPercent}%");
-
-            Console.WriteLine($"Status: {(item.IsCompleted ? "Completed" : "Pending")}");
-            Console.WriteLine("--------------------");
+            Console.WriteLine($"ID: {item.Id}");
+            Console.WriteLine($"  Title: {item.Title}");
+            Console.WriteLine($"  Description: {item.Description}");
+            Console.WriteLine($"  Category: {item.Category}");
+            // No CreatedAt property to print
+            // Use Sum() instead of CalculateTotalProgress()
+            Console.WriteLine($"  Progress: {item.Progressions.Sum(p => p.Percent):0.##}%{(item.IsCompleted ? " (Completed)" : "")}");
+            if (item.Progressions.Any())
+            {
+                Console.WriteLine("  Progression History:");
+                 // Use Date instead of DateTime
+                foreach (var prog in item.Progressions.OrderBy(p => p.Date))
+                {
+                    // Use Date instead of DateTime
+                    Console.WriteLine($"    - {prog.Date:yyyy-MM-dd HH:mm}: {prog.Percent}%");
+                }
+            }
+            Console.WriteLine();
         }
-    }
-
-    private string GenerateProgressBar(decimal percentage)
-    {
-        const int barLength = 20;
-        int filledLength = (int)Math.Round((percentage / 100m) * barLength);
-        int emptyLength = barLength - filledLength;
-
-        filledLength = Math.Min(filledLength, barLength);
-        emptyLength = Math.Max(0, barLength - filledLength);
-
-        return new string('#', filledLength) + new string('-', emptyLength);
+        Console.WriteLine("--- End of List ---\n");
     }
 }
