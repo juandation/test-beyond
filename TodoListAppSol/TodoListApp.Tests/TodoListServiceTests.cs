@@ -1,34 +1,58 @@
-using TodoListApp.Core.Interfaces;
-using TodoListApp.Core.Services;
 using Xunit;
-using System.IO;
+using TodoListApp.Core.Services;
+using TodoListApp.Core.Interfaces;
+using TodoListApp.Core.Entities;
+using TodoListApp.Core.Results;
 using System;
+using System.IO;
+using System.Linq;
 
 namespace TodoListApp.Tests;
 
-public class TodoListServiceTests
+public class TodoListServiceTests : IDisposable
 {
-    private readonly ITodoListRepository _repository;
+    private readonly InMemoryTodoListRepository _repository;
     private readonly ITodoList _service;
+    private readonly StringWriter _stringWriter;
+    private readonly TextWriter _originalOutput;
 
     public TodoListServiceTests()
     {
         _repository = new InMemoryTodoListRepository();
         _service = new TodoListService(_repository);
+        _stringWriter = new StringWriter();
+        _originalOutput = Console.Out;
+    }
+
+    public void Dispose()
+    {
+        Console.SetOut(_originalOutput);
+        _stringWriter.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     [Fact]
     public void Can_AddItem_With_ValidData()
     {
-        int initialId = _repository.GetNextId();
-        string title = "Test Title";
-        string description = "Test Description";
+        int id = _repository.GetNextId();
+        string title = "Test Task";
+        string desc = "Test Description";
         string category = "Personal";
 
-        _service.AddItem(initialId, title, description, category);
+        var result = _service.AddItem(id, title, desc, category);
 
-        int nextId = _repository.GetNextId();
-        Assert.Equal(initialId + 1, nextId);
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.Equal(id, result.Value.Id);
+        Assert.Equal(title, result.Value.Title);
+        Assert.Equal(desc, result.Value.Description);
+        Assert.Equal(category, result.Value.Category);
+        Assert.Equal(id + 1, _repository.GetNextId());
+
+        var addedItemResult = _service.GetItemById(id);
+        Assert.True(addedItemResult.IsSuccess);
+        Assert.NotNull(addedItemResult.Value);
+        Assert.Equal(title, addedItemResult.Value.Title);
     }
 
     [Fact]
@@ -36,216 +60,201 @@ public class TodoListServiceTests
     {
         int id = _repository.GetNextId();
         string invalidCategory = "InvalidCategory";
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
 
-        _service.AddItem(id, "Test Title", "Test Desc", invalidCategory);
+        var result = _service.AddItem(id, "Test Title", "Test Desc", invalidCategory);
 
-        var output = stringWriter.ToString();
-        Assert.Contains($"Error: Category '{invalidCategory}' is not valid.", output);
-        Assert.Equal(id + 1, _repository.GetNextId());
+        Assert.False(result.IsSuccess);
+        Assert.Null(result.Value);
+        Assert.Contains("not valid", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
 
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
+        var getItemResult = _service.GetItemById(id);
+        Assert.False(getItemResult.IsSuccess);
     }
 
     [Fact]
     public void Cannot_AddItem_With_DuplicateId()
     {
         int id = _repository.GetNextId();
-        _service.AddItem(id, "First Item", "Desc1", "Personal");
-
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
-
-        _service.AddItem(id, "Second Item", "Desc2", "Work");
-
-        var output = stringWriter.ToString();
-        Assert.Contains($"Error: TodoItem with Id {id} already exists.", output);
+        var firstAddResult = _service.AddItem(id, "First Item", "Desc1", "Personal");
+        Assert.True(firstAddResult.IsSuccess);
         Assert.Equal(id + 1, _repository.GetNextId());
 
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
+        var secondAddResult = _service.AddItem(id, "Second Item", "Desc2", "Work");
+
+        Assert.False(secondAddResult.IsSuccess);
+        Assert.Null(secondAddResult.Value);
+        Assert.Contains("already exists", secondAddResult.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+
+        var allItems = _service.GetAllItems();
+        Assert.Single(allItems);
+        Assert.Equal("First Item", allItems.First().Title);
     }
 
     [Fact]
-    public void Can_UpdateItem_When_ProgressIsLow()
+    public void Can_UpdateItem_With_ValidData_And_ProgressBelow50()
     {
         int id = _repository.GetNextId();
         _service.AddItem(id, "Update Test", "Initial Desc", "Work");
-        _service.RegisterProgression(id, DateTime.Now, 40);
-        string newDescription = "Updated Description";
+        _service.RegisterProgression(id, DateTime.Now, 30);
 
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
+        string newDesc = "Updated Description";
+        var result = _service.UpdateItem(id, newDesc);
 
-        _service.UpdateItem(id, newDescription);
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.ErrorMessage);
 
-        var output = stringWriter.ToString();
-        Assert.Contains($"TodoItem {id} updated successfully.", output);
-
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
+        var updatedItemResult = _service.GetItemById(id);
+        Assert.True(updatedItemResult.IsSuccess);
+        Assert.NotNull(updatedItemResult.Value);
+        Assert.Equal(newDesc, updatedItemResult.Value.Description);
     }
 
     [Fact]
-    public void Cannot_UpdateItem_When_ProgressIsHigh()
+    public void Cannot_UpdateItem_When_ProgressOver50()
     {
         int id = _repository.GetNextId();
         _service.AddItem(id, "Update Fail Test", "Initial Desc", "Work");
         _service.RegisterProgression(id, DateTime.Now, 60);
-        string newDescription = "Should Not Update";
 
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
+        string newDesc = "Updated Description";
+        var result = _service.UpdateItem(id, newDesc);
 
-        _service.UpdateItem(id, newDescription);
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("progress is over 50%", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
 
-        var output = stringWriter.ToString();
-        Assert.Contains($"Error: Cannot update TodoItem {id} because its progress is over 50%.", output);
-
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
+        var itemResult = _service.GetItemById(id);
+        Assert.True(itemResult.IsSuccess);
+        Assert.NotNull(itemResult.Value);
+        Assert.Equal("Initial Desc", itemResult.Value.Description);
     }
 
     [Fact]
-    public void Cannot_UpdateItem_When_ItemNotFound()
+    public void Cannot_UpdateItem_When_NotFound()
     {
         int nonExistentId = 999;
-        string newDescription = "Doesn't Matter";
+        var result = _service.UpdateItem(nonExistentId, "New Description");
 
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
-
-        _service.UpdateItem(nonExistentId, newDescription);
-
-        var output = stringWriter.ToString();
-        Assert.Contains($"Error: TodoItem with Id {nonExistentId} not found.", output);
-
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("not found", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void Can_RemoveItem_When_NotCompleted()
+    public void Can_RemoveItem_When_Exists_And_NotCompleted()
     {
         int id = _repository.GetNextId();
-        _service.AddItem(id, "Remove Test", "Item to remove", "Personal");
-        _service.RegisterProgression(id, DateTime.Now, 30);
+        _service.AddItem(id, "Remove Test", "Desc", "Personal");
+        _service.RegisterProgression(id, DateTime.Now, 40);
 
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
+        var result = _service.RemoveItem(id);
 
-        _service.RemoveItem(id);
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.ErrorMessage);
 
-        var output = stringWriter.ToString();
-        Assert.Contains($"TodoItem {id} removed successfully.", output);
-
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
+        var getItemResult = _service.GetItemById(id);
+        Assert.False(getItemResult.IsSuccess);
+        Assert.Contains("not found", getItemResult.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public void Cannot_RemoveItem_When_Completed()
     {
         int id = _repository.GetNextId();
-        _service.AddItem(id, "Remove Fail Test", "Completed item", "Work");
-        _service.RegisterProgression(id, DateTime.Now.AddDays(-1), 100);
+        _service.AddItem(id, "Remove Fail Test", "Desc", "Personal");
+        _service.RegisterProgression(id, DateTime.Now, 100);
 
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
+        var result = _service.RemoveItem(id);
 
-        _service.RemoveItem(id);
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("is completed", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
 
-        var output = stringWriter.ToString();
-        Assert.Contains($"Error: Cannot remove TodoItem {id} because it is completed.", output);
-
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
+        var getItemResult = _service.GetItemById(id);
+        Assert.True(getItemResult.IsSuccess);
+        Assert.NotNull(getItemResult.Value);
     }
 
     [Fact]
-    public void Cannot_RemoveItem_When_ItemNotFound()
+    public void Cannot_RemoveItem_When_NotFound()
     {
-        int nonExistentId = 888;
+        int nonExistentId = 999;
+        var result = _service.RemoveItem(nonExistentId);
 
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
-
-        _service.RemoveItem(nonExistentId);
-
-        var output = stringWriter.ToString();
-        Assert.Contains($"Error: TodoItem with Id {nonExistentId} not found.", output);
-
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("not found", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public void Can_RegisterProgression_With_ValidData()
     {
         int id = _repository.GetNextId();
-        _service.AddItem(id, "Progress Test", "Desc", "Study");
-        decimal percent = 45;
-        DateTime date = DateTime.Now;
+        _service.AddItem(id, "Progress Test", "Desc", "Work");
+        DateTime progTime = DateTime.Now;
+        decimal percent = 25;
 
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
+        var result = _service.RegisterProgression(id, progTime, percent);
 
-        _service.RegisterProgression(id, date, percent);
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.ErrorMessage);
 
-        var output = stringWriter.ToString();
-        Assert.Contains($"Progression registered for TodoItem {id}.", output);
-
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
+        var itemResult = _service.GetItemById(id);
+        Assert.True(itemResult.IsSuccess);
+        Assert.NotNull(itemResult.Value);
+        Assert.Single(itemResult.Value.Progressions);
+        // Use Date instead of DateTime
+        Assert.Equal(progTime, itemResult.Value.Progressions.First().Date);
+        Assert.Equal(percent, itemResult.Value.Progressions.First().Percent);
+        Assert.False(itemResult.Value.IsCompleted);
     }
 
     [Fact]
-    public void Cannot_RegisterProgression_When_ItemNotFound()
-    {
-        int nonExistentId = 777;
-
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
-
-        _service.RegisterProgression(nonExistentId, DateTime.Now, 50);
-
-        var output = stringWriter.ToString();
-        Assert.Contains($"Error: TodoItem with Id {nonExistentId} not found.", output);
-
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
-    }
-
-    [Fact]
-    public void Cannot_RegisterProgression_When_ItemIsCompleted()
+    public void Can_RegisterProgression_To_Reach100Percent()
     {
         int id = _repository.GetNextId();
-        _service.AddItem(id, "Progress Fail Test", "Completed item", "Personal");
-        _service.RegisterProgression(id, DateTime.Now.AddDays(-1), 100);
+        _service.AddItem(id, "Complete Test", "Desc", "Work");
+        _service.RegisterProgression(id, DateTime.Now.AddMinutes(-10), 60);
+        DateTime finalProgTime = DateTime.Now;
+        decimal finalPercent = 40;
 
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
+        var result = _service.RegisterProgression(id, finalProgTime, finalPercent);
 
-        _service.RegisterProgression(id, DateTime.Now, 10);
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.ErrorMessage);
 
-        var output = stringWriter.ToString();
-        Assert.Contains($"Error: Cannot register progression for TodoItem {id} because it is already completed.", output);
+        var itemResult = _service.GetItemById(id);
+        Assert.True(itemResult.IsSuccess);
+        Assert.NotNull(itemResult.Value);
+        Assert.Equal(2, itemResult.Value.Progressions.Count);
+        Assert.True(itemResult.Value.IsCompleted);
+        // Use Sum() instead of CalculateTotalProgress()
+        Assert.Equal(100, itemResult.Value.Progressions.Sum(p => p.Percent));
+    }
 
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
+    [Fact]
+    public void Cannot_RegisterProgression_When_NotFound()
+    {
+        int nonExistentId = 999;
+        var result = _service.RegisterProgression(nonExistentId, DateTime.Now, 50);
+
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("not found", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Cannot_RegisterProgression_When_ItemCompleted()
+    {
+        int id = _repository.GetNextId();
+        _service.AddItem(id, "Already Complete", "Desc", "Personal");
+        _service.RegisterProgression(id, DateTime.Now, 100);
+
+        var result = _service.RegisterProgression(id, DateTime.Now.AddDays(1), 10);
+
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("already completed", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
@@ -254,60 +263,42 @@ public class TodoListServiceTests
     public void Cannot_RegisterProgression_With_InvalidPercentage(decimal invalidPercent)
     {
         int id = _repository.GetNextId();
-        _service.AddItem(id, "Progress Percent Test", "Desc", "Work");
+        _service.AddItem(id, "Invalid Percent", "Desc", "Work");
 
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
+        var result = _service.RegisterProgression(id, DateTime.Now, invalidPercent);
 
-        _service.RegisterProgression(id, DateTime.Now, invalidPercent);
-
-        var output = stringWriter.ToString();
-        Assert.Contains("Error: Percentage must be between 0 and 100.", output);
-
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("between 0 and 100", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public void Cannot_RegisterProgression_When_TotalExceeds100()
     {
         int id = _repository.GetNextId();
-        _service.AddItem(id, "Progress Total Test", "Desc", "Study");
-        _service.RegisterProgression(id, DateTime.Now.AddDays(-1), 70);
+        _service.AddItem(id, "Exceed 100", "Desc", "Personal");
+        _service.RegisterProgression(id, DateTime.Now, 70);
 
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
+        var result = _service.RegisterProgression(id, DateTime.Now.AddMinutes(5), 40);
 
-        _service.RegisterProgression(id, DateTime.Now, 40);
-
-        var output = stringWriter.ToString();
-        Assert.Contains("Error: Total percentage cannot exceed 100.", output);
-
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("exceed 100", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void Cannot_RegisterProgression_With_EarlierDate()
+    public void Cannot_RegisterProgression_With_EarlierDateThanLast()
     {
         int id = _repository.GetNextId();
-        DateTime firstDate = DateTime.Now.AddDays(-2);
-        DateTime earlierDate = DateTime.Now.AddDays(-3);
-        _service.AddItem(id, "Progress Date Test", "Desc", "Personal");
-        _service.RegisterProgression(id, firstDate, 30);
+        _service.AddItem(id, "Date Order Test", "Desc", "Work");
+        var laterDate = DateTime.Now;
+        _service.RegisterProgression(id, laterDate, 30);
 
-        var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
+        var earlierDate = laterDate.AddMinutes(-10);
+        var result = _service.RegisterProgression(id, earlierDate, 20);
 
-        _service.RegisterProgression(id, earlierDate, 20);
-
-        var output = stringWriter.ToString();
-        Assert.Contains("Error: Progression date cannot be earlier than the last registered progression date", output);
-
-        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-        standardOutput.AutoFlush = true;
-        Console.SetOut(standardOutput);
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("earlier than the last", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 }
