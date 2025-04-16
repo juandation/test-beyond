@@ -53,6 +53,7 @@ export class AppComponent implements OnInit {
     this.todoService.getTodos().subscribe({
       next: (data: TodoItem[]) => {
         this.todos = data;
+        console.log(this.todos);
         this.filterTodos();
         this.loadingError = null;
         this.isLoading = false;
@@ -118,7 +119,6 @@ export class AppComponent implements OnInit {
     this.todoService.addTodo(todoData).subscribe({
       next: (newTodo: TodoItem) => {
         this.loadTodos();
-
         this.closeAddTodoModal();
       },
       error: (err: HttpErrorResponse | Error) => {
@@ -140,17 +140,22 @@ export class AppComponent implements OnInit {
     });
   }
 
-  addProgression(todoId: number, percent: number): void {
+  addProgression(
+    todoId: number,
+    percent: number,
+    progressInput?: HTMLInputElement
+  ): void {
+    console.log('Adding progress:', todoId, percent);
     if (percent == null || percent < 0 || percent > 100) {
       console.error('Invalid percentage value');
       this.loadingError = 'Progress percentage must be between 0 and 100.';
       return;
     }
     this.loadingError = null;
-    // Corrected method name based on TodoService definition
     this.todoService.addProgress(todoId, percent).subscribe({
       next: () => {
-        this.loadTodos(); // Reload todos after adding progress
+        this.loadTodos();
+        if (progressInput) progressInput.value = '';
       },
       error: (err: HttpErrorResponse | Error) => {
         console.error('Error adding progression:', err);

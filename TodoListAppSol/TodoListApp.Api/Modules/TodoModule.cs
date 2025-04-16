@@ -1,9 +1,5 @@
 using Carter;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
 using TodoListApp.Core.Interfaces;
-using TodoListApp.Core.Entities;
 
 namespace TodoListApp.Api.Modules;
 
@@ -65,7 +61,7 @@ public class TodoModule : ICarterModule
         }
 
         var newItem = result.Value; 
-        return Results.Created($"/todos/{newItem.Id}", newItem);
+        return Results.Created($"/todos/{newItem!.Id}", newItem);
     }
 
     private static IResult UpdateTodo(int id, UpdateTodoRequest request, ITodoList todoListService)
@@ -75,7 +71,7 @@ public class TodoModule : ICarterModule
         if (!result.IsSuccess)
         {
         
-            if (result.ErrorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            if (result.ErrorMessage!.Contains("not found", StringComparison.OrdinalIgnoreCase))
             {
                 return Results.NotFound(result.ErrorMessage);
             }
@@ -92,7 +88,7 @@ public class TodoModule : ICarterModule
 
         if (!result.IsSuccess)
         {
-            if (result.ErrorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            if (result.ErrorMessage!.Contains("not found", StringComparison.OrdinalIgnoreCase))
             {
                 return Results.NotFound(result.ErrorMessage);
             }
@@ -108,7 +104,7 @@ public class TodoModule : ICarterModule
 
         if (!result.IsSuccess)
         {
-            if (result.ErrorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            if (result.ErrorMessage!.Contains("not found", StringComparison.OrdinalIgnoreCase))
             {
                 return Results.NotFound(result.ErrorMessage);
             }

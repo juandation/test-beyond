@@ -26,7 +26,6 @@ export class TodoService {
 
   public addTodo(todoData: AddTodoRequest): Observable<TodoItem> {
     console.log('Adding todo via API:', this.apiUrl);
-    // Use the actual API endpoint
     return this.http.post<TodoItem>(this.apiUrl, todoData).pipe(
       catchError((error: HttpErrorResponse) => {
         console.error('Error adding todo via API:', error);
@@ -40,7 +39,7 @@ export class TodoService {
   public deleteTodo(id: number): Observable<void> {
     const url = `${this.apiUrl}/${id}`;
     console.log('Deleting todo via API:', url);
-    // Use the actual API endpoint
+
     return this.http.delete<void>(url).pipe(
       catchError((error: HttpErrorResponse) => {
         console.error('Error deleting todo via API:', error);
@@ -54,7 +53,7 @@ export class TodoService {
   public addProgress(id: number, percent: number): Observable<void> {
     const url = `${this.apiUrl}/${id}/progress`;
     console.log('Adding progress via API:', url);
-    // Use the actual API endpoint
+
     const now = new Date().toISOString();
     const body = { dateTime: now, percent: percent };
     return this.http.post<void>(url, body).pipe(

@@ -1,6 +1,6 @@
 # Todo List Application
 
-Esta aplicación es una solución completa para gestionar tareas (todos) que incluye tanto un backend en .NET como un frontend en Angular. El proyecto implementa las funcionalidades especificadas en las tareas del ejercicio, que se pueden encontrar en [Docs/tasks.md](Docs/tasks.md).
+Esta aplicación es una solución para gestionar tareas (todos) que incluye tanto un backend en .NET como un frontend en Angular. El proyecto implementa las funcionalidades especificadas en las tareas del ejercicio, que se pueden encontrar en [Docs/tasks.md](Docs/tasks.md).
 
 ## Estructura del Repositorio
 
@@ -22,7 +22,7 @@ La solución backend está organizada en capas:
 
 - **TodoListApp.Api**:
 
-  - API REST implementada con .NET 8
+  - API REST implementada con .NET 9
   - Usa el patrón Minimal API con módulos
   - Expone endpoints para gestionar todos y su progreso
 
@@ -88,12 +88,12 @@ La aplicación estará disponible en `http://localhost:4200`
 
 ## Características Principales
 
-- ✅ Gestión completa de tareas (crear, actualizar, eliminar)
-- ✅ Sistema de progreso con validaciones
-- ✅ Interfaz de usuario moderna y responsiva
-- ✅ Validaciones en frontend y backend
-- ✅ Tests unitarios completos
-- ✅ Comunicación asíncrona sin recargas de página
+- Gestión completa de tareas (crear, actualizar, eliminar)
+- Sistema de progreso con validaciones
+- Interfaz de usuario moderna y responsiva
+- Validaciones en frontend y backend
+- Tests unitarios completos
+- Comunicación asíncrona sin recargas de página
 
 ## Colección Postman
 
@@ -111,3 +111,25 @@ Se incluye una colección de Postman (`TodoListApi.postman_collection.json`) par
 - .NET 9 SDK
 - Node.js (versión 18 o superior)
 - Angular CLI
+
+## Pruebas (Testing)
+
+Para ejecutar las pruebas unitarias y de integración:
+
+### Backend (.NET)
+
+Navega al directorio de la solución y ejecuta:
+
+```bash
+cd TodoListAppSol
+dotnet test
+```
+
+### Frontend (Angular)
+
+Navega al directorio de la aplicación cliente y ejecuta:
+
+```bash
+cd TodoListAppClient
+ng test
+```

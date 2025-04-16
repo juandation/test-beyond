@@ -1,4 +1,3 @@
-/* Modern Dark Theme with Green Accents */
 :root {
   --primary-color: #2ecc71;
   --secondary-color: #27ae60;
@@ -49,6 +48,12 @@ h1 {
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
   margin-top: 20px;
+}
+
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .todo-card {
@@ -111,6 +116,36 @@ h1 {
 
 .progress-container {
   margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.progress-container progress {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+
+.progress-percentage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.1em;
+  font-weight: bold;
+  color: #ffb300;
+  pointer-events: none;
+  text-shadow: 0 1px 4px #222;
+  transition: color 0.2s, text-shadow 0.2s;
+}
+
+.progress-percentage.full-progress {
+  color: #27ae60;
+  text-shadow: 0 1px 4px #fff;
 }
 
 .progress-container label {

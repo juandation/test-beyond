@@ -51,7 +51,14 @@
                   id="progress-{{ todo.id }}"
                   [value]="todo.progression"
                   max="100"
+                  style="width: 64px; height: 64px; border-radius: 50%"
                 ></progress>
+                <span
+                  class="progress-percentage"
+                  [class.full-progress]="todo.progression === 100"
+                >
+                  {{ todo.progression }}%
+                </span>
               </div>
               <div class="todo-info">
                 <h3>{{ todo.title }}</h3>
@@ -67,6 +74,7 @@
               <!-- Add Progress Section -->
               <div class="add-progress-section">
                 <input
+                  id="progress-input-{{ todo.id }}"
                   type="number"
                   pattern="[0-9]*"
                   #progressInput
@@ -78,17 +86,17 @@
                 <button
                   type="button"
                   class="btn btn-secondary btn-sm"
-                  (click)="addProgression(todo.id, progressInput.valueAsNumber)"
-                  [disabled]="
-                    !progressInput.value ||
-                    progressInput.valueAsNumber < 1 ||
-                    progressInput.valueAsNumber > 100
+                  (click)="
+                    addProgression(
+                      todo.id,
+                      progressInput.valueAsNumber,
+                      progressInput
+                    )
                   "
                 >
                   Add %
                 </button>
-              </div>
-              <div class="todo-actions">
+
                 <span class="status" [class.completed]="todo.isCompleted">
                   {{ todo.isCompleted ? "Completed" : "Pending" }}
                 </span>
